@@ -72,26 +72,38 @@
 
     <script>
       test('calcularTroco(1,1) deve retornar [] - Um array vazio', (assert) => {
-        const trocoCalculado = calcularTroco(1, 1) // Sem troco, apenas um array vazio
+        const estoque = { 100: 10, 50: 10, 20: 10, 10: 10, 5: 10, 2: 10, 1: 10 }
+        const trocoCalculado = calcularTroco(1, 1, estoque) // Sem troco, apenas um array vazio
         const trocoEsperado = []
         assert.deepEqual(trocoCalculado, trocoEsperado) // 'deepEqual' usado para comparar arrays, veja mais em https://api.qunitjs.com/assert/deepEqual/
       })
 
        test('calcularTroco(215, 300) deve retornar [50, 20, 10, 5]', (assert) => {
-        const trocoCalculado = calcularTroco(215, 300) // Esperado um array contendo [50, 20, 10, 5]
+        const estoque = { 100: 10, 50: 10, 20: 10, 10: 10, 5: 10, 2: 10, 1: 10 }
+        const trocoCalculado = calcularTroco(215, 300, estoque) // Esperado um array contendo [50, 20, 10, 5]
         const trocoEsperado = [50, 20, 10, 5]
         assert.deepEqual(trocoCalculado, trocoEsperado)
       })
 
       test('calcularTroco(486, 600) deve retornar [100, 10, 2, 2]', (assert) => {
-        const trocoCalculado = calcularTroco(486, 600)
+        const estoque = { 100: 10, 50: 10, 20: 10, 10: 10, 5: 10, 2: 10, 1: 10 }
+        const trocoCalculado = calcularTroco(486, 600, estoque)
         const trocoEsperado = [100, 10, 2, 2]
         assert.deepEqual(trocoCalculado, trocoEsperado)
       })
 
        test('calcularTroco(12, 200) deve retornar [100, 50, 20, 10, 5, 2, 1]', (assert) => {
-        const trocoCalculado = calcularTroco(12, 200)
+        const estoque = { 100: 10, 50: 10, 20: 10, 10: 10, 5: 10, 2: 10, 1: 10 }
+        const trocoCalculado = calcularTroco(12, 200, estoque)
         const trocoEsperado = [100, 50, 20, 10, 5, 2, 1]
+        assert.deepEqual(trocoCalculado, trocoEsperado)
+      })
+
+      // RED: Teste que falha - O algoritmo guloso tenta pegar nota de 50 que não existe no estoque
+      test('calcularTroco com estoque limitado: troco de 80 com estoque {100:1, 50:0, 20:5, 10:10} deve retornar [20,20,20,20]', (assert) => {
+        const estoque = { 100: 1, 50: 0, 20: 5, 10: 10, 5: 10, 2: 10, 1: 10 }
+        const trocoCalculado = calcularTroco(20, 100, estoque) // Troco de 80
+        const trocoEsperado = [20, 20, 20, 20] // Algoritmo guloso falharia tentando usar nota de 50
         assert.deepEqual(trocoCalculado, trocoEsperado)
       })
     </script>
