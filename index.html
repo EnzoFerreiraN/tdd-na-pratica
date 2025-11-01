@@ -15,20 +15,58 @@
     <script src="https://code.jquery.com/qunit/qunit-1.18.0.js"></script>
 
     <script>
+      /**
+       * Calcula o troco em notas a partir do preço do produto e valor pago
+       * Utiliza o algoritmo guloso para retornar o menor número de notas possível
+       * 
+       * @param {number} precoDoProduto - Preço do produto em reais
+       * @param {number} valorPago - Valor pago pelo cliente em reais
+       * @returns {number[]} Array com as notas que compõem o troco, em ordem decrescente
+       */
       function calcularTroco(precoDoProduto, valorPago) {
-        // IMPLEMENTE AQUI A FUNÇÃO DE CÁLCULO DE TROCO
-        let troco = valorPago - precoDoProduto;
-        let notasDisponiveis = [100, 50, 20, 10, 5, 2, 1];
-        let trocoArray = [];
-
-        for (let nota of notasDisponiveis) {
-          while (troco >= nota) {
-            trocoArray.push(nota);
-            troco -= nota;
+        const NOTAS_DISPONIVEIS = [100, 50, 20, 10, 5, 2, 1];
+        
+        const valorTroco = valorPago - precoDoProduto;
+        
+        // Validação de entrada
+        if (valorTroco < 0) {
+          throw new Error('O valor pago não pode ser menor que o preço do produto');
+        }
+        
+        if (valorTroco === 0) {
+          return [];
+        }
+        
+        return calcularNotasDoTroco(valorTroco, NOTAS_DISPONIVEIS);
+      }
+      
+      /**
+       * Calcula as notas necessárias para compor um valor usando algoritmo guloso
+       * 
+       * @param {number} valor - Valor a ser decomposto em notas
+       * @param {number[]} notasDisponiveis - Array de notas disponíveis em ordem decrescente
+       * @returns {number[]} Array com as notas que compõem o valor
+       */
+      function calcularNotasDoTroco(valor, notasDisponiveis) {
+        const notas = [];
+        let valorRestante = valor;
+        
+        for (const nota of notasDisponiveis) {
+          const quantidadeDeNotas = Math.floor(valorRestante / nota);
+          
+          for (let i = 0; i < quantidadeDeNotas; i++) {
+            notas.push(nota);
+          }
+          
+          valorRestante = valorRestante % nota;
+          
+          // Otimização: se não há mais valor restante, podemos parar
+          if (valorRestante === 0) {
+            break;
           }
         }
-
-        return trocoArray;
+        
+        return notas;
       }
     </script>
 
