@@ -16,13 +16,19 @@
 
     <script>
       function calcularTroco(precoDoProduto, valorPago) {
-        let troco = []
+        // IMPLEMENTE AQUI A FUNÇÃO DE CÁLCULO DE TROCO
+        let troco = valorPago - precoDoProduto;
+        let notasDisponiveis = [100, 50, 20, 10, 5, 2, 1];
+        let trocoArray = [];
 
-        if((valorPago - precoDoProduto) != 0) { // Precisa fornecer algum troco?
-          troco = [50, 20, 10, 5] // Necessário para o teste que está falhando começar a passar
+        for (let nota of notasDisponiveis) {
+          while (troco >= nota) {
+            trocoArray.push(nota);
+            troco -= nota;
+          }
         }
 
-        return troco
+        return trocoArray;
       }
     </script>
 
