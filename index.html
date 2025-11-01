@@ -15,6 +15,9 @@
     <script src="https://code.jquery.com/qunit/qunit-1.18.0.js"></script>
 
     <script>
+      // Constantes globais
+      const NOTAS_DISPONIVEIS = [100, 50, 20, 10, 5, 2, 1];
+      
       /**
        * Calcula o troco em notas a partir do preço do produto e valor pago
        * Considera o estoque disponível de cada nota na máquina
@@ -26,103 +29,298 @@
        * @throws {Error} Se não for possível dar o troco exato com o estoque disponível
        */
       function calcularTroco(precoDoProduto, valorPago, estoque) {
-        const NOTAS_DISPONIVEIS = [100, 50, 20, 10, 5, 2, 1];
+        const valorTroco = calcularValorDoTroco(precoDoProduto, valorPago);
         
-        const valorTroco = valorPago - precoDoProduto;
+        validarValorDoTroco(valorTroco);
         
-        // Validação de entrada
-        if (valorTroco < 0) {
-          throw new Error('O valor pago não pode ser menor que o preço do produto');
-        }
-        
-        if (valorTroco === 0) {
+        if (trocoEhZero(valorTroco)) {
           return [];
         }
         
-        return calcularNotasDoTroco(valorTroco, NOTAS_DISPONIVEIS, estoque);
+        return encontrarNotasParaTroco(valorTroco, estoque);
       }
       
       /**
-       * Calcula as notas necessárias para compor um valor considerando o estoque
-       * Usa algoritmo com backtracking para encontrar uma solução válida
+       * Calcula o valor do troco
        * 
-       * @param {number} valor - Valor a ser decomposto em notas
-       * @param {number[]} notasDisponiveis - Array de notas disponíveis em ordem decrescente
+       * @param {number} precoDoProduto - Preço do produto
+       * @param {number} valorPago - Valor pago pelo cliente
+       * @returns {number} Valor do troco
+       */
+      function calcularValorDoTroco(precoDoProduto, valorPago) {
+        return valorPago - precoDoProduto;
+      }
+      
+      /**
+       * Valida se o valor do troco é válido
+       * 
+       * @param {number} valorTroco - Valor do troco a ser validado
+       * @throws {Error} Se o valor do troco for negativo
+       */
+      function validarValorDoTroco(valorTroco) {
+        if (valorTroco < 0) {
+          throw new Error('O valor pago não pode ser menor que o preço do produto');
+        }
+      }
+      
+      /**
+       * Verifica se o troco é zero
+       * 
+       * @param {number} valorTroco - Valor do troco
+       * @returns {boolean} True se o troco for zero
+       */
+      function trocoEhZero(valorTroco) {
+        return valorTroco === 0;
+      }
+      
+      /**
+       * Encontra as notas necessárias para compor o troco considerando o estoque
+       * 
+       * @param {number} valorTroco - Valor do troco a ser calculado
        * @param {Object} estoque - Objeto com quantidade disponível de cada nota
-       * @returns {number[]} Array com as notas que compõem o valor
+       * @returns {number[]} Array com as notas que compõem o troco
        * @throws {Error} Se não for possível dar o troco exato
        */
-      function calcularNotasDoTroco(valor, notasDisponiveis, estoque) {
-        // Cria uma cópia do estoque para não modificar o original
-        const estoqueDisponivel = { ...estoque };
+      function encontrarNotasParaTroco(valorTroco, estoque) {
+        const estoqueDisponivel = clonarEstoque(estoque);
+        const resultado = buscarCombinacaoDeNotas(valorTroco, estoqueDisponivel, 0);
         
-        const resultado = encontrarCombinacao(valor, notasDisponiveis, estoqueDisponivel, 0);
-        
-        if (resultado === null) {
-          throw new Error('Não é possível fornecer o troco exato com as notas disponíveis no estoque');
+        if (naoEncontrouSolucao(resultado)) {
+          lancarErroTrocoImpossivel();
         }
         
         return resultado;
       }
       
       /**
-       * Algoritmo recursivo com backtracking para encontrar combinação de notas
+       * Clona o objeto de estoque para não modificar o original
+       * 
+       * @param {Object} estoque - Estoque original
+       * @returns {Object} Cópia do estoque
+       */
+      function clonarEstoque(estoque) {
+        return { ...estoque };
+      }
+      
+      /**
+       * Verifica se não foi encontrada solução
+       * 
+       * @param {Array|null} resultado - Resultado da busca
+       * @returns {boolean} True se não encontrou solução
+       */
+      function naoEncontrouSolucao(resultado) {
+        return resultado === null;
+      }
+      
+      /**
+       * Lança erro quando não é possível fornecer o troco
+       * 
+       * @throws {Error} Erro indicando impossibilidade de dar o troco
+       */
+      function lancarErroTrocoImpossivel() {
+        throw new Error('Não é possível fornecer o troco exato com as notas disponíveis no estoque');
+      }
+      
+      /**
+       * Busca recursivamente uma combinação de notas usando backtracking
+       * Algoritmo tenta usar o máximo de notas grandes primeiro para otimizar
        * 
        * @param {number} valorRestante - Valor que ainda precisa ser completado
-       * @param {number[]} notasDisponiveis - Array de notas disponíveis
        * @param {Object} estoque - Estoque atual de notas
-       * @param {number} indice - Índice atual no array de notas
+       * @param {number} indiceNota - Índice da nota atual no array NOTAS_DISPONIVEIS
        * @returns {number[]|null} Array com as notas ou null se não houver solução
        */
-      function encontrarCombinacao(valorRestante, notasDisponiveis, estoque, indice) {
-        // Caso base: troco completo
-        if (valorRestante === 0) {
+      function buscarCombinacaoDeNotas(valorRestante, estoque, indiceNota) {
+        if (trocoCompleto(valorRestante)) {
           return [];
         }
         
-        // Caso base: não há mais notas para tentar
-        if (indice >= notasDisponiveis.length) {
+        if (naoHaMaisNotasParaTestar(indiceNota)) {
           return null;
         }
         
-        const notaAtual = notasDisponiveis[indice];
-        const quantidadeDisponivel = estoque[notaAtual] || 0;
+        const notaAtual = obterNotaAtual(indiceNota);
+        const maxNotasUsaveis = calcularMaximoDeNotasUsaveis(valorRestante, notaAtual, estoque);
         
-        // Calcula quantas notas desse valor podemos usar
-        const maxNotasPossiveis = Math.min(
-          quantidadeDisponivel,
-          Math.floor(valorRestante / notaAtual)
-        );
+        return tentarQuantidadesDeNotas(valorRestante, estoque, indiceNota, notaAtual, maxNotasUsaveis);
+      }
+      
+      /**
+       * Verifica se o troco foi completado
+       * 
+       * @param {number} valorRestante - Valor restante a ser completado
+       * @returns {boolean} True se o troco está completo
+       */
+      function trocoCompleto(valorRestante) {
+        return valorRestante === 0;
+      }
+      
+      /**
+       * Verifica se não há mais notas para testar
+       * 
+       * @param {number} indiceNota - Índice atual da nota
+       * @returns {boolean} True se não há mais notas
+       */
+      function naoHaMaisNotasParaTestar(indiceNota) {
+        return indiceNota >= NOTAS_DISPONIVEIS.length;
+      }
+      
+      /**
+       * Obtém a nota atual baseada no índice
+       * 
+       * @param {number} indiceNota - Índice da nota
+       * @returns {number} Valor da nota
+       */
+      function obterNotaAtual(indiceNota) {
+        return NOTAS_DISPONIVEIS[indiceNota];
+      }
+      
+      /**
+       * Calcula o máximo de notas que podem ser usadas
+       * Considera tanto o estoque disponível quanto o valor necessário
+       * 
+       * @param {number} valorRestante - Valor restante a ser completado
+       * @param {number} nota - Valor da nota
+       * @param {Object} estoque - Estoque disponível
+       * @returns {number} Quantidade máxima de notas que podem ser usadas
+       */
+      function calcularMaximoDeNotasUsaveis(valorRestante, nota, estoque) {
+        const quantidadeNoEstoque = obterQuantidadeNoEstoque(nota, estoque);
+        const quantidadeNecessaria = calcularQuantidadeNecessaria(valorRestante, nota);
         
-        // Tenta usar diferentes quantidades dessa nota (do máximo ao mínimo)
-        for (let quantidade = maxNotasPossiveis; quantidade >= 0; quantidade--) {
-          const valorUsado = quantidade * notaAtual;
-          const novoValorRestante = valorRestante - valorUsado;
-          
-          // Atualiza o estoque temporariamente
-          const estoqueAtualizado = { ...estoque };
-          estoqueAtualizado[notaAtual] = (estoque[notaAtual] || 0) - quantidade;
-          
-          // Tenta completar o troco com as próximas notas
-          const resultadoResto = encontrarCombinacao(
-            novoValorRestante,
-            notasDisponiveis,
-            estoqueAtualizado,
-            indice + 1
+        return Math.min(quantidadeNoEstoque, quantidadeNecessaria);
+      }
+      
+      /**
+       * Obtém a quantidade de uma nota no estoque
+       * 
+       * @param {number} nota - Valor da nota
+       * @param {Object} estoque - Estoque disponível
+       * @returns {number} Quantidade disponível no estoque (verifica se estoque[nota] > 0)
+       */
+      function obterQuantidadeNoEstoque(nota, estoque) {
+        return estoque[nota] || 0;
+      }
+      
+      /**
+       * Calcula quantas notas seriam necessárias para o valor restante
+       * 
+       * @param {number} valorRestante - Valor restante
+       * @param {number} nota - Valor da nota
+       * @returns {number} Quantidade necessária de notas
+       */
+      function calcularQuantidadeNecessaria(valorRestante, nota) {
+        return Math.floor(valorRestante / nota);
+      }
+      
+      /**
+       * Tenta diferentes quantidades de uma nota (do máximo ao mínimo) usando backtracking
+       * 
+       * @param {number} valorRestante - Valor restante a completar
+       * @param {Object} estoque - Estoque atual
+       * @param {number} indiceNota - Índice da nota atual
+       * @param {number} nota - Valor da nota
+       * @param {number} maxQuantidade - Quantidade máxima de notas que podem ser usadas
+       * @returns {number[]|null} Array com as notas ou null se não houver solução
+       */
+      function tentarQuantidadesDeNotas(valorRestante, estoque, indiceNota, nota, maxQuantidade) {
+        // Tenta do máximo ao mínimo (incluindo zero) para encontrar uma solução
+        for (let quantidade = maxQuantidade; quantidade >= 0; quantidade--) {
+          const solucao = tentarUsarQuantidadeDeNotas(
+            valorRestante, 
+            estoque, 
+            indiceNota, 
+            nota, 
+            quantidade
           );
           
-          // Se conseguiu completar o troco, adiciona as notas usadas e retorna
-          if (resultadoResto !== null) {
-            const notasUsadas = [];
-            for (let i = 0; i < quantidade; i++) {
-              notasUsadas.push(notaAtual);
-            }
-            return [...notasUsadas, ...resultadoResto];
+          if (solucao !== null) {
+            return solucao;
           }
         }
         
-        // Nenhuma combinação funcionou
         return null;
+      }
+      
+      /**
+       * Tenta usar uma quantidade específica de notas
+       * 
+       * @param {number} valorRestante - Valor restante
+       * @param {Object} estoque - Estoque atual
+       * @param {number} indiceNota - Índice da nota
+       * @param {number} nota - Valor da nota
+       * @param {number} quantidade - Quantidade de notas a usar
+       * @returns {number[]|null} Array com as notas ou null se não funcionou
+       */
+      function tentarUsarQuantidadeDeNotas(valorRestante, estoque, indiceNota, nota, quantidade) {
+        const novoValorRestante = calcularNovoValorRestante(valorRestante, nota, quantidade);
+        const estoqueAtualizado = decrementarEstoque(estoque, nota, quantidade);
+        
+        const resultadoProximasNotas = buscarCombinacaoDeNotas(
+          novoValorRestante,
+          estoqueAtualizado,
+          indiceNota + 1
+        );
+        
+        if (resultadoProximasNotas !== null) {
+          return construirSolucao(nota, quantidade, resultadoProximasNotas);
+        }
+        
+        return null;
+      }
+      
+      /**
+       * Calcula o novo valor restante após usar determinada quantidade de notas
+       * 
+       * @param {number} valorRestante - Valor restante atual
+       * @param {number} nota - Valor da nota
+       * @param {number} quantidade - Quantidade de notas usadas
+       * @returns {number} Novo valor restante
+       */
+      function calcularNovoValorRestante(valorRestante, nota, quantidade) {
+        return valorRestante - (nota * quantidade);
+      }
+      
+      /**
+       * Decrementa o estoque após usar uma quantidade de notas (estoque[cedula] - quantidade)
+       * 
+       * @param {Object} estoque - Estoque atual
+       * @param {number} nota - Valor da nota
+       * @param {number} quantidade - Quantidade de notas usadas
+       * @returns {Object} Novo estoque atualizado
+       */
+      function decrementarEstoque(estoque, nota, quantidade) {
+        const estoqueAtualizado = clonarEstoque(estoque);
+        estoqueAtualizado[nota] = obterQuantidadeNoEstoque(nota, estoque) - quantidade;
+        return estoqueAtualizado;
+      }
+      
+      /**
+       * Constrói a solução final combinando as notas usadas com o resultado das próximas notas
+       * 
+       * @param {number} nota - Valor da nota usada
+       * @param {number} quantidade - Quantidade de notas usadas
+       * @param {number[]} resultadoProximasNotas - Resultado das próximas notas
+       * @returns {number[]} Array completo com todas as notas da solução
+       */
+      function construirSolucao(nota, quantidade, resultadoProximasNotas) {
+        const notasUsadas = criarArrayDeNotas(nota, quantidade);
+        return [...notasUsadas, ...resultadoProximasNotas];
+      }
+      
+      /**
+       * Cria um array com a quantidade especificada de notas
+       * 
+       * @param {number} nota - Valor da nota
+       * @param {number} quantidade - Quantidade de notas
+       * @returns {number[]} Array com as notas
+       */
+      function criarArrayDeNotas(nota, quantidade) {
+        const notas = [];
+        for (let i = 0; i < quantidade; i++) {
+          notas.push(nota);
+        }
+        return notas;
       }
     </script>
 
